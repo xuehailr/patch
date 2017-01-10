@@ -11,7 +11,21 @@ import java.util.Date;
 import java.util.List;
 
 import org.apache.tools.ant.util.DateUtils;
+/**
+ *  * 标记清除 内存碎片 效率高
+	 * 复制  内存浪费 
+	 * 标记整理 效率低 
+	 * serial  年轻代 单线程 stop the world  与cms收集器搭配 
+	 * parnew 年轻代  多线程版本的serial stop the world 与cms收集器搭配
+	 * parallal new 年轻代  多线程 吞吐量优先收集器 可设置吞吐量和最低停顿时间  与parallal old ,seral old搭配
 
+	 * serial old 老年代  单线程 stop the world 
+	 * parallal old 老年代  多线程 吞吐量优先收集器 可设置吞吐量和最低停顿时间
+	 * cms 老年代  第一个并发垃圾收集器 收集过程包括四个阶段  初始标记  并发标记  重新标记  并发清除  缺点  :浮动垃圾  并发标记时会启动多个线程  降低应用的吞吐量.    
+	 * G1 新一代垃圾收集器  将内存划分为若干块 根据最低停顿时间 优先收集垃圾最多的区域.
+ * @author Administrator
+ *
+ */
 public class PatchIncrement {
 	private static String patchFolder;
 	private static String patchResultFolder;
@@ -57,7 +71,7 @@ public class PatchIncrement {
          String result;  
          do {  
               // 输出提示文字  
-             System.out.print(prompt);  
+             System.out.println(prompt);  
              InputStreamReader is_reader = new InputStreamReader(System.in);  
              result = new BufferedReader(is_reader).readLine();  
          }while (isInvalid(result)); // 当用户输入无效的时候，反复提示要求用户输入  
@@ -142,17 +156,23 @@ public class PatchIncrement {
 		}
 		return false;
 	}
-	private static  List<String> getChangeFileList(){
+	private static  List<String> getChangeFileList() throws IOException{
 		List<String> list = new ArrayList<String>();
 		File f = new File(patchFolder);
 		getSubFilePath(f,list);
 		List l =  filterPath(list);
 		if(!isConfig){
-			l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"bxloan-commons-0.0.1-SNAPSHOT.jar");
-			l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"bxloan-dao-0.0.1-SNAPSHOT.jar");
-			l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"bxloan-service-0.0.1-SNAPSHOT.jar");
-			l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"itext-asian-5.2.0.jar.jar");
-			l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"itextpdf-5.5.1.jar");
+			if("y".equalsIgnoreCase(readUserInput("if commons.jar changes ? y or n"))){
+				l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"bxloan-commons-0.0.1-SNAPSHOT.jar");
+			}
+			if("y".equalsIgnoreCase(readUserInput("if dao.jar changes ? y or n"))){
+				l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"bxloan-dao-0.0.1-SNAPSHOT.jar");
+			}
+			if("y".equalsIgnoreCase(readUserInput("if service.jar changes ? y or n"))){
+				l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"bxloan-service-0.0.1-SNAPSHOT.jar");
+			}
+			//l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"jcommon-1.0.21.jar");
+			//l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"jfreechart-1.0.17.jar");
 		}
 		return l;
 	}
