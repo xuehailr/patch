@@ -11,42 +11,34 @@ import java.util.Date;
 import java.util.List;
 
 import org.apache.tools.ant.util.DateUtils;
-/**
- *  * 标记清除 内存碎片 效率高
-	 * 复制  内存浪费 
-	 * 标记整理 效率低 
-	 * serial  年轻代 单线程 stop the world  与cms收集器搭配 
-	 * parnew 年轻代  多线程版本的serial stop the world 与cms收集器搭配
-	 * parallal new 年轻代  多线程 吞吐量优先收集器 可设置吞吐量和最低停顿时间  与parallal old ,seral old搭配
 
-	 * serial old 老年代  单线程 stop the world 
-	 * parallal old 老年代  多线程 吞吐量优先收集器 可设置吞吐量和最低停顿时间
-	 * cms 老年代  第一个并发垃圾收集器 收集过程包括四个阶段  初始标记  并发标记  重新标记  并发清除  缺点  :浮动垃圾  并发标记时会启动多个线程  降低应用的吞吐量.    
-	 * G1 新一代垃圾收集器  将内存划分为若干块 根据最低停顿时间 优先收集垃圾最多的区域.
- * @author Administrator
- *
- */
 public class PatchIncrement {
-	private static String patchFolder;
+
 	private static String patchResultFolder;
 	private static String warFileName ;
 	private static String count = "01";
+	private static String version ;
+	private static String revision;
 	private static String patchName;
-	private static boolean isConfig = false;
+	private static String subPath = " https://172.16.49.100:8443/svn/jk/weidai/branches/bxloan-r" ;
+	private static String commond ;
 	public static void main(String[] args) throws Exception {
 		if(args.length==2){
-			patchFolder = args[0];
-			warFileName = args[1];
+			warFileName = args[0];
+			version = args[1];
 		}else{
-			patchFolder = "C:\\Users\\Administrator\\Desktop\\打包\\test\\bxloan-web";
-			warFileName = "C:\\Users\\Administrator\\Desktop\\打包\\test\\bxloan.war";
+			warFileName = "C:"+File.separator+"Users"+File.separator+"Administrator"+File.separator+"Desktop"+File.separator+"打包";
+			version = readUserInput("输入当前分支(如:1.5.255.1) : ");
 		}
-		warFileName = warFileName.replace("\\\\", File.separator);
-		patchFolder = patchFolder.replace("\\\\", File.separator);
-		System.out.println("patchFolder=="+patchFolder);
-		System.out.println("warFileName=="+warFileName);
-		count = readUserInput("please input version:");
-		//isConfig = "1".equals(readUserInput("please input isConfig(打包配置文件,请输入1,否则0):"));
+		warFileName = warFileName+File.separator+"bxloan.war";
+		System.out.println("war file : "+warFileName);
+
+		subPath += version;
+		revision = readUserInput("修订号(如:54218) : ");
+		commond = " cmd /c svn diff  -r "+revision+":head"+subPath+" --summarize ";
+
+		count = readUserInput(" 今天第几个包 : ");
+
 		reNameWarFile();
 		patchName = getPatchName();
 		List<String> retainList = getChangeFileList();
@@ -71,7 +63,7 @@ public class PatchIncrement {
          String result;  
          do {  
               // 输出提示文字  
-             System.out.println(prompt);  
+             System.out.print(prompt);  
              InputStreamReader is_reader = new InputStreamReader(System.in);  
              result = new BufferedReader(is_reader).readLine();  
          }while (isInvalid(result)); // 当用户输入无效的时候，反复提示要求用户输入  
@@ -104,11 +96,7 @@ public class PatchIncrement {
 	
 	private static String getPatchName(){
 		String date = DateUtils.format(new Date(), "yyyyMMdd");
-		if(isConfig){
-			return patchResultFolder+"_config_"+date+"_"+count+".tar.gz";
-		}else{
-			return patchResultFolder+"_"+date+"_"+count+".tar.gz";
-		}
+		return patchResultFolder+"_"+date+"_"+count+".tar.gz";
 	}
 	
 	private static void reNameWarFile() throws Exception{
@@ -156,24 +144,13 @@ public class PatchIncrement {
 		}
 		return false;
 	}
-	private static  List<String> getChangeFileList() throws IOException{
-		List<String> list = new ArrayList<String>();
-		File f = new File(patchFolder);
-		getSubFilePath(f,list);
+	private static  List<String> getChangeFileList() throws IOException {
+		List<String> list = getChangeList();
+
 		List l =  filterPath(list);
-		if(!isConfig){
-			if("y".equalsIgnoreCase(readUserInput("if commons.jar changes ? y or n"))){
-				l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"bxloan-commons-0.0.1-SNAPSHOT.jar");
-			}
-			if("y".equalsIgnoreCase(readUserInput("if dao.jar changes ? y or n"))){
-				l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"bxloan-dao-0.0.1-SNAPSHOT.jar");
-			}
-			if("y".equalsIgnoreCase(readUserInput("if service.jar changes ? y or n"))){
-				l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"bxloan-service-0.0.1-SNAPSHOT.jar");
-			}
-			//l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"jcommon-1.0.21.jar");
-			//l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"jfreechart-1.0.17.jar");
-		}
+		l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"bxloan-commons-0.0.1-SNAPSHOT.jar");
+		l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"bxloan-dao-0.0.1-SNAPSHOT.jar");
+		l.add(patchResultFolder+File.separator+"WEB-INF"+File.separator+"lib"+File.separator+"bxloan-service-0.0.1-SNAPSHOT.jar");
 		return l;
 	}
 	private static List<String> filterPath(List<String> list){
@@ -181,26 +158,43 @@ public class PatchIncrement {
 		for(String f:list){
 			String f2 = "";
 			if(f.endsWith(".java")){
-				String replaceStr =patchFolder+File.separator+"src"+File.separator+"main"+File.separator+"java"+File.separator;
+				String replaceStr =File.separator+"src"+File.separator+"main"+File.separator+"java"+File.separator;
 				String str = patchResultFolder+File.separator+"WEB-INF"+File.separator+"classes"+File.separator;
 				f2 = f.replace(replaceStr, str);
 			}else if(f.contains(File.separator+"src"+File.separator+"main"+File.separator+"resources"+File.separator)){
-				f2 = f.replace(patchFolder+File.separator+"src"+File.separator+"main"+File.separator+"resources", patchResultFolder+File.separator+"WEB-INF"+File.separator+"classes");
+				f2 = f.replace(File.separator+"src"+File.separator+"main"+File.separator+"resources", patchResultFolder+File.separator+"WEB-INF"+File.separator+"classes");
 			}else{
-				f2 = f.replace(patchFolder+File.separator+"src"+File.separator+"main"+File.separator+"webapp"+File.separator, patchResultFolder+File.separator);
+				f2 = f.replace(File.separator+"src"+File.separator+"main"+File.separator+"webapp"+File.separator, patchResultFolder+File.separator);
 			}
 			l.add(f2);
 		}
 		return l;
 	}
-	private static void getSubFilePath(File folder ,List<String> list){
-		File[] fs = folder.listFiles();
-		for(File tf:fs){
-			if(tf.isDirectory()){
-				getSubFilePath(tf, list);
-			}else{
-				list.add(tf.getAbsolutePath());
+	private static List<String> getChangeList() throws IOException{
+
+
+		Process process = Runtime.getRuntime().exec(commond);//svn diff  -r  54218 --summarize
+
+		InputStream is = process.getInputStream();
+		//is = process.getErrorStream();
+		BufferedReader bf=new BufferedReader(new InputStreamReader(is,"GBK"));
+		//最好在将字节流转换为字符流的时候 进行转码
+		List<String> list = new ArrayList<String>();
+		String line="";
+		subPath = subPath.replace("/", File.separator);
+		while((line=bf.readLine())!=null){
+			line = line.replace("/", File.separator);
+			if(!line.contains("bxloan-web")){
+				continue;
 			}
+			if(line.contains("src"+File.separator+"main"+File.separator+"resources")){
+				continue;
+			}
+			String web = line.substring(line.indexOf(subPath + File.separator + "bxloan-web"));
+			web = web.replace(subPath+File.separator+"bxloan-web","");
+			System.out.println(web);
+			list.add(web);
 		}
+		return list;
 	}
 }
